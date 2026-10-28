@@ -326,7 +326,7 @@ function bindEvents() {
         const productId = $form.data('product-id');
         const wrapper = State.productWrappers.get(productId);
         if (wrapper) {
-            bindAttributeEvents(productId, wrapper)();
+            bindAttributeEvents(productId, wrapper);
         }
     });
 }

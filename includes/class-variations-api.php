@@ -98,10 +98,18 @@ class Decotay_Tay_BWQ_Variations_API {
         
         foreach ($product->get_attributes() as $attr_name => $attr_data) {
             if ($attr_data->get_variation()) {
+                $term_ids = $attr_data->get_options();
+                $options = [];
+                foreach ($term_ids as $term_id) {
+                    $term = get_term($term_id);
+                    if ($term && !is_wp_error($term)) {
+                        $options[] = $term->slug;
+                    }
+                }
                 $data['attributes'][$attr_name] = [
                     'name'    => $attr_data->get_name(),
                     'label'   => wc_attribute_label($attr_name, $product),
-                    'options' => $attr_data->get_options(),
+                    'options' => $options,
                     'slug'    => $attr_name,
                 ];
             }
@@ -111,7 +119,10 @@ class Decotay_Tay_BWQ_Variations_API {
         
         foreach ($variation_ids as $var_id) {
             $variation = wc_get_product($var_id);
-            if (!$variation || !$variation->is_purchasable()) continue;
+            if (!$variation) continue;
+            $stock_status = $variation->get_stock_status();
+            $price = $variation->get_price();
+            if ($stock_status !== 'instock' || empty($price)) continue;
             
             $attrs = [];
             foreach ($variation->get_attributes() as $k => $v) {
@@ -144,7 +155,10 @@ class Decotay_Tay_BWQ_Variations_API {
         
         foreach ($variation_ids as $var_id) {
             $variation = wc_get_product($var_id);
-            if (!$variation || !$variation->is_purchasable()) continue;
+            if (!$variation) continue;
+            $stock_status = $variation->get_stock_status();
+            $price = $variation->get_price();
+            if ($stock_status !== 'instock' || empty($price)) continue;
             
             $match = true;
             $var_attrs = $variation->get_attributes();

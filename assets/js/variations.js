@@ -105,10 +105,20 @@ async function fetchVariations(productId) {
         });
         
         if (response.ok) {
-            return response.json();
+            const data = await response.json();
+            // Si REST API devuelve variations vacías, caer a AJAX
+            if (data.variations && data.variations.length === 0) {
+                console.log('[DTBWQ] REST API devolvió variations vacías, intentando AJAX...');
+                return fetchVariationsAJAX(productId);
+            }
+            return data;
         }
     } catch (e) {}
     
+    return fetchVariationsAJAX(productId);
+}
+
+async function fetchVariationsAJAX(productId) {
     const formData = new FormData();
     formData.append('action', 'decotay_tay_get_variations');
     formData.append('product_id', productId);

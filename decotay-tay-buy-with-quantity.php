@@ -25,6 +25,7 @@ require_once DECOTAY_TAY_BWQ_PLUGIN_DIR . 'includes/class-variations-api.php';
 class Decotay_Tay_Buy_With_Quantity {
     
     private static $instance = null;
+    private $adding_variation_id = 0;
     
     public static function instance() {
         if (null === self::$instance) {
@@ -45,6 +46,19 @@ class Decotay_Tay_Buy_With_Quantity {
         add_action('wp_ajax_nopriv_decotay_tay_get_permalink', [$this, 'ajax_get_permalink']);
         add_action('wp_head', [$this, 'inline_config'], 20);
         add_filter('script_loader_tag', [$this, 'add_module_attribute'], 10, 3);
+        
+        // Filter para permitir variaciones no purchasable pero con stock/precio
+        add_filter('woocommerce_variation_is_purchasable', [$this, 'filter_variation_purchasable'], 1, 2);
+    }
+    
+    public function filter_variation_purchasable($purchasable, $variation) {
+        // Permitir variaciones con stock y precio aunque no sean purchasable nativamente
+        $stock_status = $variation->get_stock_status();
+        $price = $variation->get_price();
+        if ($stock_status === 'instock' && !empty($price)) {
+            return true;
+        }
+        return $purchasable;
     }
     
     public function enqueue_assets() {
@@ -135,10 +149,17 @@ class Decotay_Tay_Buy_With_Quantity {
                 wp_send_json_error(['message' => __('Selecciona los atributos del producto', 'decotay-tay-bwq')]);
             }
             $variation = wc_get_product($variation_id);
-            if (!$variation || !$variation->is_purchasable()) {
+            if (!$variation) {
+                wp_send_json_error(['message' => __('Variación no encontrada', 'decotay-tay-bwq')]);
+            }
+            $stock_status = $variation->get_stock_status();
+            $price = $variation->get_price();
+            if ($stock_status !== 'instock' || empty($price)) {
                 wp_send_json_error(['message' => __('Esta variación no está disponible', 'decotay-tay-bwq')]);
             }
+            $this->adding_variation_id = $variation_id;
             $cart_item_key = WC()->cart->add_to_cart($product_id, $quantity, $variation_id, $variation_attrs);
+            $this->adding_variation_id = 0;
         } else {
             if (!$product->is_purchasable()) {
                 wp_send_json_error(['message' => __('Este producto no se puede comprar', 'decotay-tay-bwq')]);
@@ -238,7 +259,14 @@ class Decotay_Tay_Buy_With_Quantity {
         
         foreach ($product->get_attributes() as $attr_name => $attr_data) {
             if ($attr_data->get_variation()) {
-                $options = $attr_data->get_options();
+                $term_ids = $attr_data->get_options();
+                $options = [];
+                foreach ($term_ids as $term_id) {
+                    $term = get_term($term_id);
+                    if ($term && !is_wp_error($term)) {
+                        $options[] = $term->slug;
+                    }
+                }
                 $data['attributes'][$attr_name] = [
                     'name'     => $attr_data->get_name(),
                     'label'    => wc_attribute_label($attr_name, $product),
@@ -251,9 +279,10 @@ class Decotay_Tay_Buy_With_Quantity {
         $variation_ids = $product->get_children();
         foreach ($variation_ids as $var_id) {
             $variation = wc_get_product($var_id);
-            if (!$variation || !$variation->is_purchasable()) {
-                continue;
-            }
+            if (!$variation) continue;
+            $stock_status = $variation->get_stock_status();
+            $price = $variation->get_price();
+            if ($stock_status !== 'instock' || empty($price)) continue;
             
             $attrs = [];
             foreach ($variation->get_attributes() as $attr_name => $attr_value) {
@@ -290,8 +319,9 @@ class Decotay_Tay_Buy_With_Quantity {
         foreach ($variation_ids as $var_id) {
             $variation = wc_get_product($var_id);
             if (!$variation) continue;
-            
-            $match = true;
+            $stock_status = $variation->get_stock_status();
+            $price = $variation->get_price();
+            if ($stock_status !== 'instock' || empty($price)) continue;
             foreach ($selected_attrs as $attr_name => $attr_value) {
                 $var_attrs = $variation->get_attributes();
                 if (!isset($var_attrs[$attr_name]) || $var_attrs[$attr_name] !== $attr_value) {
