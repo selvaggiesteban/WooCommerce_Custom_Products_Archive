@@ -1,0 +1,337 @@
+/**
+ * Decotay/Tay - Comprar con Cantidad
+ * Estilos agnósticos + XStore overrides
+ */
+
+.decotay-tay-bwq-hidden {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    height: 0 !important;
+    width: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    position: absolute !important;
+    pointer-events: none !important;
+}
+
+.products .button.product_type_simple:not(.decotay-tay-bwq-button),
+.products .button.product_type_variable:not(.decotay-tay-bwq-button),
+.products .add_to_cart_button:not(.decotay-tay-bwq-button),
+.woocommerce ul.products li.product .button:not(.decotay-tay-bwq-button),
+.woocommerce ul.products li.product .add_to_cart_button:not(.decotay-tay-bwq-button),
+
+.etheme-elementor-product .add_to_cart_button:not(.decotay-tay-bwq-button),
+.etheme-elementor-widget-loaded .add_to_cart_button:not(.decotay-tay-bwq-button),
+.elementor-widget-theme-woocommerce_products .add_to_cart_button:not(.decotay-tay-bwq-button),
+.elementor-widget-theme-woocommerce_products .button.product_type_simple:not(.decotay-tay-bwq-button),
+.elementor-widget-theme-woocommerce_products .button.product_type_variable:not(.decotay-tay-bwq-button),
+
+.etheme-elementor-off-canvas .add_to_cart_button:not(.decotay-tay-bwq-button),
+.etheme-elementor-off-canvas .button.product_type_simple:not(.decotay-tay-bwq-button),
+.etheme-elementor-off-canvas .button.product_type_variable:not(.decotay-tay-bwq-button),
+
+.ajax_add_to_cart:not(.decotay-tay-bwq-button),
+.added_to_cart:not(.decotay-tay-bwq-button) {
+    display: none !important;
+}
+
+.decotay-tay-bwq-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 10px;
+    padding: 12px;
+    background: #fafafa;
+    border: 1px solid #eee;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.decotay-tay-bwq-wrapper:hover {
+    border-color: #ddd;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.decotay-tay-bwq-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.decotay-tay-bwq-attributes {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.decotay-tay-bwq-attr-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.decotay-tay-bwq-attr-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+    text-transform: capitalize;
+}
+
+.decotay-tay-bwq-attr-select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: #fff;
+    font-size: 14px;
+    color: #333;
+    cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 40px;
+}
+
+.decotay-tay-bwq-attr-select:hover {
+    border-color: #bbb;
+}
+
+.decotay-tay-bwq-attr-select:focus {
+    outline: none;
+    border-color: #0073aa;
+    box-shadow: 0 0 0 3px rgba(0, 115, 170, 0.15);
+}
+
+.decotay-tay-bwq-attr-select:disabled {
+    background: #f5f5f5;
+    color: #999;
+    cursor: not-allowed;
+}
+
+.decotay-tay-bwq-loading {
+    padding: 16px;
+    text-align: center;
+    color: #666;
+    font-size: 13px;
+}
+
+.decotay-tay-bwq-error {
+    padding: 12px;
+    background: #fff0f0;
+    border: 1px solid #fcc;
+    border-radius: 4px;
+    color: #c00;
+    font-size: 13px;
+}
+
+.decotay-tay-bwq-no-attrs {
+    padding: 12px;
+    text-align: center;
+    color: #999;
+    font-size: 13px;
+}
+
+.decotay-tay-bwq-price {
+    font-size: 18px;
+    font-weight: 700;
+    color: #222;
+    min-height: 26px;
+}
+
+.decotay-tay-bwq-price .woocommerce-Price-amount {
+    font-weight: 700;
+}
+
+.decotay-tay-bwq-price del {
+    opacity: 0.6;
+    margin-right: 8px;
+}
+
+.decotay-tay-bwq-price ins {
+    text-decoration: none;
+}
+
+.decotay-tay-bwq-stock {
+    font-size: 12px;
+    display: none;
+}
+
+.decotay-tay-bwq-stock .in-stock {
+    color: #2e7d32;
+    font-weight: 500;
+}
+
+.decotay-tay-bwq-stock .out-of-stock {
+    color: #c62828;
+    font-weight: 500;
+}
+
+.decotay-tay-bwq-image {
+    margin-top: 8px;
+    text-align: center;
+}
+
+.decotay-tay-bwq-image img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.decotay-tay-bwq-qty-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.decotay-tay-bwq-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+    white-space: nowrap;
+    min-width: 70px;
+}
+
+.decotay-tay-bwq-qty {
+    width: 80px;
+    max-width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    text-align: center;
+    background: #fff;
+    transition: border-color 0.2s;
+}
+
+.decotay-tay-bwq-qty:focus {
+    outline: none;
+    border-color: #0073aa;
+    box-shadow: 0 0 0 3px rgba(0, 115, 170, 0.15);
+}
+
+.decotay-tay-bwq-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.decotay-tay-bwq-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 12px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+}
+
+.decotay-tay-bwq-buy-button {
+    background: #0073aa;
+    color: #fff;
+}
+
+.decotay-tay-bwq-buy-button:hover:not(:disabled) {
+    background: #006799;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 115, 170, 0.3);
+}
+
+.decotay-tay-bwq-cart-button {
+    background: #28a745;
+    color: #fff;
+}
+
+.decotay-tay-bwq-cart-button:hover:not(:disabled) {
+    background: #218838;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+}
+
+.decotay-tay-bwq-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+.decotay-tay-bwq-button:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0, 115, 170, 0.3);
+}
+
+.decotay-tay-bwq-cart-button:focus {
+    box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.3);
+}
+
+.decotay-tay-bwq-message {
+    min-height: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    text-align: center;
+    transition: opacity 0.2s;
+}
+
+.decotay-tay-bwq-message.success {
+    color: #2e7d32;
+}
+
+.decotay-tay-bwq-message.error {
+    color: #c62828;
+}
+
+@media (max-width: 768px) {
+    .decotay-tay-bwq-wrapper {
+        padding: 10px;
+    }
+    
+    .decotay-tay-bwq-qty-wrapper {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .decotay-tay-bwq-label {
+        min-width: auto;
+    }
+    
+    .decotay-tay-bwq-qty {
+        width: 100%;
+    }
+    
+    .decotay-tay-bwq-buttons {
+        gap: 6px;
+    }
+}
+
+.decotay-tay-bwq-wrapper * {
+    box-sizing: border-box;
+}
+
+.products .decotay-tay-bwq-wrapper,
+.elementor-widget-theme-woocommerce_products .decotay-tay-bwq-wrapper {
+    margin-top: 8px;
+}
+
+.etheme-elementor-off-canvas-products-has-quantity-input .quantity {
+    display: none !important;
+}
+
+@keyframes dtbwq-fadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.decotay-tay-bwq-wrapper {
+    animation: dtbwq-fadeIn 0.2s ease forwards;
+}
