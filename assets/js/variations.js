@@ -1,9 +1,6 @@
 /**
  * Módulo de Variaciones - Alto Rendimiento
- * - Caché en memoria + localStorage
- * - Lazy loading: solo carga cuando el usuario interactúa
- * - Deduplicación de peticiones
- * - Compatible con REST API y AJAX legacy
+ * Labels legibles, precio/stock/imagen dinámicos
  */
 
 const VariationCache = new Map();
@@ -11,14 +8,29 @@ const PendingRequests = new Map();
 const CACHE_TTL = 60 * 60 * 1000;
 const STORAGE_PREFIX = 'dtbwq_var_';
 
+/**
+ * Normalizar slug a label legible
+ * "laca-oxido" → "Laca + Óxido"
+ * "negro-micro-texturado" → "Negro Micro Texturado"
+ */
+function slugToLabel(slug) {
+    if (!slug) return slug;
+    return slug
+        .split('-')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ')
+        .replace(/\+/g, ' + ');
+}
+
+/**
+ * Obtener variaciones con labels legibles en options
+ */
 export async function getVariations(productId) {
     const cacheKey = `variations_${productId}`;
     
     if (VariationCache.has(cacheKey)) {
         const cached = VariationCache.get(cacheKey);
-        if (Date.now() - cached.timestamp < CACHE_TTL) {
-            return cached.data;
-        }
+        if (Date.now() - cached.timestamp < CACHE_TTL) return cached.data;
         VariationCache.delete(cacheKey);
     }
     
@@ -34,28 +46,45 @@ export async function getVariations(productId) {
         }
     } catch (e) {}
     
-    if (PendingRequests.has(cacheKey)) {
-        return PendingRequests.get(cacheKey);
-    }
+    if (PendingRequests.has(cacheKey)) return PendingRequests.get(cacheKey);
     
     const promise = fetchVariations(productId);
     PendingRequests.set(cacheKey, promise);
     
     try {
         const data = await promise;
-        cacheData(cacheKey, data);
-        return data;
+        // Enriquecer con labels legibles
+        const enriched = enrichVariationData(data);
+        cacheData(cacheKey, enriched);
+        return enriched;
     } finally {
         PendingRequests.delete(cacheKey);
     }
 }
 
+function enrichVariationData(data) {
+    if (!data.attributes) return data;
+    
+    const enriched = { ...data };
+    enriched.attributes = { ...data.attributes };
+    
+    Object.keys(enriched.attributes).forEach(attrName => {
+        const attr = enriched.attributes[attrName];
+        if (attr.options && Array.isArray(attr.options)) {
+            attr.options = attr.options.map(opt => ({
+                value: opt,
+                label: slugToLabel(opt)
+            }));
+        }
+    });
+    
+    return enriched;
+}
+
 export async function findVariation(productId, attributes) {
     const cacheKey = `find_${productId}_${JSON.stringify(attributes)}`;
     
-    if (VariationCache.has(cacheKey)) {
-        return VariationCache.get(cacheKey);
-    }
+    if (VariationCache.has(cacheKey)) return VariationCache.get(cacheKey);
     
     try {
         const restUrl = `${decotay_tay_bwq.rest_url}find-variation`;
@@ -99,26 +128,11 @@ async function fetchVariations(productId) {
     try {
         const restUrl = `${decotay_tay_bwq.rest_url}variations/${productId}`;
         const response = await fetch(restUrl, {
-            headers: {
-                'X-WP-Nonce': decotay_tay_bwq.nonce,
-            },
+            headers: { 'X-WP-Nonce': decotay_tay_bwq.nonce },
         });
-        
-        if (response.ok) {
-            const data = await response.json();
-            // Si REST API devuelve variations vacías, caer a AJAX
-            if (data.variations && data.variations.length === 0) {
-                console.log('[DTBWQ] REST API devolvió variations vacías, intentando AJAX...');
-                return fetchVariationsAJAX(productId);
-            }
-            return data;
-        }
+        if (response.ok) return response.json();
     } catch (e) {}
     
-    return fetchVariationsAJAX(productId);
-}
-
-async function fetchVariationsAJAX(productId) {
     const formData = new FormData();
     formData.append('action', 'decotay_tay_get_variations');
     formData.append('product_id', productId);
@@ -130,17 +144,13 @@ async function fetchVariationsAJAX(productId) {
     });
     
     const result = await ajaxResponse.json();
-    if (result.success) {
-        return result.data;
-    }
-    
+    if (result.success) return result.data;
     throw new Error(result.data?.message || 'Error al cargar variaciones');
 }
 
 function cacheData(key, data) {
     const entry = { data, timestamp: Date.now() };
     VariationCache.set(key, entry);
-    
     try {
         localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(entry));
         cleanupOldCache();
@@ -154,12 +164,8 @@ function cleanupOldCache() {
         if (key?.startsWith(STORAGE_PREFIX)) {
             try {
                 const entry = JSON.parse(localStorage.getItem(key));
-                if (now - entry.timestamp > 24 * CACHE_TTL) {
-                    localStorage.removeItem(key);
-                }
-            } catch (e) {
-                localStorage.removeItem(key);
-            }
+                if (now - entry.timestamp > 24 * CACHE_TTL) localStorage.removeItem(key);
+            } catch (e) { localStorage.removeItem(key); }
         }
     }
 }
@@ -167,9 +173,7 @@ function cleanupOldCache() {
 export function invalidateCache(productId) {
     const key = `variations_${productId}`;
     VariationCache.delete(key);
-    try {
-        localStorage.removeItem(STORAGE_PREFIX + key);
-    } catch (e) {}
+    try { localStorage.removeItem(STORAGE_PREFIX + key); } catch (e) {}
 }
 
 export function preloadVisibleVariations(productIds) {
@@ -191,3 +195,6 @@ export function preloadVisibleVariations(productIds) {
         if (el) observer.observe(el);
     });
 }
+
+// Exportar para uso global en script.js
+window.slugToLabel = slugToLabel;

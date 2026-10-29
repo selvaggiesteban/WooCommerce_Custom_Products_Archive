@@ -6,11 +6,15 @@
 
 import { getVariations, findVariation, invalidateCache, preloadVisibleVariations } from './variations.js';
 
+// ============================================================
+// CONFIGURACIÓN Y ESTADO GLOBAL
+// ============================================================
+
 const State = {
     initialized: false,
-    productWrappers: new Map(),
-    variationData: new Map(),
-    selectedAttrs: new Map(),
+    productWrappers: new Map(),     // productId -> { wrapper, form, selects, btnBuy, btnCart, msg }
+    variationData: new Map(),       // productId -> datos de variaciones
+    selectedAttrs: new Map(),       // productId -> { attr: value }
     isXStore: false,
     isElementor: false,
 };
@@ -33,17 +37,31 @@ const Selectors = {
     imageDisplay: '.decotay-tay-bwq-image',
 };
 
+// ============================================================
+// DETECCIÓN DE TEMA (XStore / Elementor)
+// ============================================================
+
 function detectTheme() {
-    State.isXStore = window.DecotayTayBWQ?.isXStore === true || 
-                     document.body.classList.contains('theme-xstore') ||
-                     document.querySelector('.etheme-elementor-widget-loaded') !== null ||
-                     document.querySelector('[data-widget_type*="theme-"]') !== null;
+    // Read theme info from localized script data
+    State.isXStore = decotay_tay_bwq?.is_xstore === true;
+    State.isElementor = decotay_tay_bwq?.is_elementor === true;
     
-    State.isElementor = window.DecotayTayBWQ?.isElementor === true ||
-                        document.querySelector('.elementor') !== null;
+    // Fallback: detect from DOM if not in localized data
+    if (!State.isXStore && document.body) {
+        State.isXStore = document.body.classList.contains('theme-xstore') || 
+                         document.querySelector('.etheme-elementor-widget-loaded') !== null ||
+                         document.querySelector('[data-element_type="widget"][data-widget_type*="theme-"]') !== null;
+    }
+    if (!State.isElementor && document.body) {
+        State.isElementor = document.querySelector('.elementor') !== null;
+    }
     
     console.log('[DTBWQ] Theme detection:', { isXStore: State.isXStore, isElementor: State.isElementor });
 }
+
+// ============================================================
+// FUNCIÓN PRINCIPAL: INYECTAR UI EN PRODUCTOS
+// ============================================================
 
 export function injectQuantityAndBuy() {
     if (State.initialized) return;
@@ -101,13 +119,13 @@ function createWrapper(productId, isVariable) {
     const $imageDisplay = $(`<div class="decotay-tay-bwq-image" style="display:none;"></div>`);
     
     const $qtyWrapper = $(`<div class="decotay-tay-bwq-qty-wrapper"></div>`);
-    const $label = $(`<label class="decotay-tay-bwq-label" for="dtbwq-qty-${productId}">${decotay_tay_bwq.buy_text}:</label>`);
+    const $label = $(`<label class="decotay-tay-bwq-label" for="dtbwq-qty-${productId}">Cantidad:</label>`);
     const $input = $(`<input type="number" name="quantity" id="dtbwq-qty-${productId}" class="decotay-tay-bwq-qty" value="1" min="1" max="999" step="1">`);
     $qtyWrapper.append($label, $input);
     
     const $btnGroup = $(`<div class="decotay-tay-bwq-buttons"></div>`);
-    const $btnBuy = $(`<button type="button" class="button decotay-tay-bwq-button decotay-tay-bwq-buy-button" data-action="buy">${decotay_tay_bwq.buy_text}</button>`);
-    const $btnCart = $(`<button type="submit" class="button decotay-tay-bwq-button decotay-tay-bwq-cart-button" data-action="cart">${decotay_tay_bwq.cart_text}</button>`);
+    const $btnBuy = $(`<button type="button" class="button decotay-tay-bwq-button decotay-tay-bwq-buy-button" data-action="buy">Comprar</button>`);
+    const $btnCart = $(`<button type="submit" class="button decotay-tay-bwq-button decotay-tay-bwq-cart-button" data-action="cart">Agregar al carrito</button>`);
     $btnGroup.append($btnBuy, $btnCart);
     
     const $hiddenAction = $(`<input type="hidden" name="action" value="decotay_tay_add_to_cart">`);
@@ -142,7 +160,7 @@ function createWrapper(productId, isVariable) {
 async function initVariationSelectors(productId, wrapper) {
     const $ = jQuery;
     
-    wrapper.$attrContainer.html(`<div class="decotay-tay-bwq-loading">${decotay_tay_bwq.i18n.loading}</div>`);
+    wrapper.$attrContainer.html(`<div class="decotay-tay-bwq-loading"></div>`);
     
     try {
         const data = await getVariations(productId);
@@ -177,23 +195,25 @@ function renderAttributeSelectors(productId, wrapper, data) {
         const $select = $(`<select class="decotay-tay-bwq-attr-select" id="dtbwq-attr-${productId}-${attrName}" name="attribute_${attrName}" data-attr="${attrName}"></select>`);
         
         const defaultVal = data.default_attrs?.[attrName] || selected[attrName] || '';
-        $select.append(`<option value="">${decotay_tay_bwq.i18n.select_option} ${attrData.label}</option>`);
+        $select.append(`<option value="">Selecciona ${attrData.label}</option>`);
         
-        attrData.options.forEach(opt => {
-            const $opt = $(`<option value="${opt}">${opt}</option>`);
-            if (opt === defaultVal) $opt.prop('selected', true);
-            $select.append($opt);
+        // Opciones con label legible
+        (attrData.options || []).forEach(opt => {
+            const value = typeof opt === 'object' ? opt.value : opt;
+            const label = typeof opt === 'object' ? opt.label : window.slugToLabel(opt);
+            const $option = $(`<option value="${value}">${label}</option>`);
+            if (value === defaultVal) $option.prop('selected', true);
+            $select.append($option);
         });
         
-        if (selected[attrName]) {
-            $select.val(selected[attrName]);
-        }
+        if (selected[attrName]) $select.val(selected[attrName]);
         
         $group.append($label, $select);
         wrapper.$attrContainer.append($group);
     });
     
     updateSelectedAttributes(productId, wrapper);
+    updatePriceStockImage(productId, wrapper, data);
 }
 
 function bindAttributeEvents(productId, wrapper) {
@@ -230,6 +250,7 @@ async function updatePriceStockImage(productId, wrapper, data) {
     let matchedVar = null;
     
     if (selectedKeys.length > 0) {
+        // Buscar coincidencia exacta con stock
         for (const v of data.variations) {
             let match = true;
             for (const [key, val] of Object.entries(selected)) {
@@ -244,6 +265,7 @@ async function updatePriceStockImage(productId, wrapper, data) {
             }
         }
         
+        // Si no hay coincidencia exacta con stock, buscar coincidencia parcial
         if (!matchedVar) {
             for (const v of data.variations) {
                 let match = true;
@@ -263,9 +285,12 @@ async function updatePriceStockImage(productId, wrapper, data) {
     
     if (matchedVar) {
         wrapper.$hiddenVariationId.val(matchedVar.id);
-        wrapper.$priceDisplay.html(matchedVar.price_html);
-        wrapper.$btnCart.prop('disabled', !matchedVar.in_stock);
         
+        // PRECIO
+        wrapper.$priceDisplay.html(matchedVar.price_html || '');
+        wrapper.$priceDisplay.removeClass('empty');
+        
+        // STOCK
         if (matchedVar.stock_qty !== null && matchedVar.stock_qty !== '') {
             const stockText = matchedVar.in_stock 
                 ? `${matchedVar.stock_qty} ${matchedVar.stock_qty === 1 ? 'disponible' : 'disponibles'}`
@@ -275,14 +300,17 @@ async function updatePriceStockImage(productId, wrapper, data) {
             wrapper.$stockDisplay.html(matchedVar.in_stock ? '<span class="in-stock">Disponible</span>' : `<span class="out-of-stock">${decotay_tay_bwq.out_of_stock}</span>`).show();
         }
         
+        // IMAGEN
         if (matchedVar.image) {
-            wrapper.$imageDisplay.html(`<img src="${matchedVar.image}" alt="" style="max-width:80px;height:auto;">`).show();
+            wrapper.$imageDisplay.html(`<img src="${matchedVar.image}" alt="${matchedVar.sku || ''}" loading="lazy">`).show();
         } else {
             wrapper.$imageDisplay.hide();
         }
+        
+        wrapper.$btnCart.prop('disabled', !matchedVar.in_stock);
     } else {
         wrapper.$hiddenVariationId.val('');
-        wrapper.$priceDisplay.html('');
+        wrapper.$priceDisplay.html('').addClass('empty');
         wrapper.$stockDisplay.hide();
         wrapper.$imageDisplay.hide();
         wrapper.$btnCart.prop('disabled', true);
@@ -309,6 +337,10 @@ function getVisibleProductIds() {
     });
     return [...new Set(ids)];
 }
+
+// ============================================================
+// EVENTOS GLOBALES
+// ============================================================
 
 function bindEvents() {
     const $ = jQuery;
@@ -450,49 +482,80 @@ function showMessage($el, text, type) {
     $el.removeClass('success error').addClass(type).text(text);
 }
 
-const observer = new MutationObserver((mutations) => {
-    let shouldReinit = false;
-    
-    mutations.forEach(mutation => {
-        mutation.addedNodes.forEach(node => {
-            if (node.nodeType === 1) {
-                const $node = jQuery(node);
-                
-                if ($node.is(Selectors.addToCartBtn) || $node.find(Selectors.addToCartBtn).length > 0) {
-                    shouldReinit = true;
+// ============================================================
+// OBSERVER PARA CONTENIDO DINÁMICO (AJAX, PAGINACIÓN, ELEMENTOR)
+// ============================================================
+
+function createObserver() {
+    const observer = new MutationObserver((mutations) => {
+        let shouldReinit = false;
+        
+        mutations.forEach(mutation => {
+            mutation.addedNodes.forEach(node => {
+                if (node.nodeType === 1) {
+                    const $node = jQuery(node);
+                    
+                    if ($node.is(Selectors.addToCartBtn) || $node.find(Selectors.addToCartBtn).length > 0) {
+                        shouldReinit = true;
+                    }
+                    
+                    if ($node.hasClass('elementor-widget-theme-woocommerce_products') || 
+                        $node.find('.elementor-widget-theme-woocommerce_products').length > 0) {
+                        shouldReinit = true;
+                    }
                 }
-                
-                if ($node.hasClass('elementor-widget-theme-woocommerce_products') || 
-                    $node.find('.elementor-widget-theme-woocommerce_products').length > 0) {
-                    shouldReinit = true;
-                }
-            }
+            });
         });
+        
+        if (shouldReinit) {
+            clearTimeout(window._dtbwq_observer_timer);
+            window._dtbwq_observer_timer = setTimeout(() => {
+                State.initialized = false;
+                injectQuantityAndBuy();
+            }, 300);
+        }
     });
     
-    if (shouldReinit) {
-        clearTimeout(window._dtbwq_observer_timer);
-        window._dtbwq_observer_timer = setTimeout(() => {
+    return observer;
+}
+
+// ============================================================
+// EVENTOS WOCOMMERCE
+// ============================================================
+
+function bindWooCommerceEvents() {
+    jQuery(document).on('added_to_cart updated_cart_totals wc_fragment_refresh', () => {
+        setTimeout(() => {
             State.initialized = false;
             injectQuantityAndBuy();
-        }, 300);
-    }
-});
+        }, 500);
+    });
+}
 
-observer.observe(document.body, { childList: true, subtree: true });
+// ============================================================
+// INICIALIZACIÓN
+// ============================================================
 
-jQuery(document).on('added_to_cart updated_cart_totals wc_fragment_refresh', () => {
-    setTimeout(() => {
-        State.initialized = false;
-        injectQuantityAndBuy();
-    }, 500);
-});
-
-jQuery(() => {
+function init() {
     detectTheme();
     injectQuantityAndBuy();
-});
+    
+    // Observer para contenido dinámico (después de que el DOM esté listo)
+    const observer = createObserver();
+    if (document.body) {
+        observer.observe(document.body, { childList: true, subtree: true });
+    } else {
+        document.addEventListener('DOMContentLoaded', () => {
+            observer.observe(document.body, { childList: true, subtree: true });
+        }, { once: true });
+    }
+    
+    bindWooCommerceEvents();
+}
 
+jQuery(init);
+
+// Exportar para testing/debug
 window.DecotayTayBWQ = window.DecotayTayBWQ || {};
 window.DecotayTayBWQ.State = State;
 window.DecotayTayBWQ.getVariations = getVariations;

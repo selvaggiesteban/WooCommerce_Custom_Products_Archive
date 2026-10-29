@@ -44,7 +44,6 @@ class Decotay_Tay_Buy_With_Quantity {
         add_action('wp_ajax_nopriv_decotay_tay_find_variation', [$this, 'ajax_find_variation']);
         add_action('wp_ajax_decotay_tay_get_permalink', [$this, 'ajax_get_permalink']);
         add_action('wp_ajax_nopriv_decotay_tay_get_permalink', [$this, 'ajax_get_permalink']);
-        add_action('wp_head', [$this, 'inline_config'], 20);
         add_filter('script_loader_tag', [$this, 'add_module_attribute'], 10, 3);
         
         // Filter para permitir variaciones no purchasable pero con stock/precio
@@ -63,6 +62,21 @@ class Decotay_Tay_Buy_With_Quantity {
     
     public function enqueue_assets() {
         $nonce = wp_create_nonce('decotay_tay_bwq_nonce');
+        
+        // Detect theme info for JS
+        $is_xstore = false;
+        $is_elementor = false;
+        
+        // Check if XStore theme is active
+        $theme = wp_get_theme();
+        if ($theme->get('Name') === 'XStore' || $theme->get_template() === 'xstore') {
+            $is_xstore = true;
+        }
+        
+        // Check for Elementor
+        if (function_exists('elementor')) {
+            $is_elementor = true;
+        }
         
         wp_enqueue_style(
             'decotay-tay-bwq-style',
@@ -97,6 +111,8 @@ class Decotay_Tay_Buy_With_Quantity {
             'cart_text'     => __('Agregar al carrito', 'decotay-tay-bwq'),
             'select_attrs'  => __('Selecciona los atributos', 'decotay-tay-bwq'),
             'out_of_stock'  => __('Sin stock', 'decotay-tay-bwq'),
+            'is_xstore'     => $is_xstore,
+            'is_elementor'  => $is_elementor,
             'i18n'          => [
                 'select_option' => __('Selecciona una opción', 'decotay-tay-bwq'),
                 'loading'       => __('Cargando...', 'decotay-tay-bwq'),
@@ -110,18 +126,6 @@ class Decotay_Tay_Buy_With_Quantity {
             return str_replace('<script ', '<script type="module" ', $tag);
         }
         return $tag;
-    }
-    
-    public function inline_config() {
-        ?>
-        <script>
-        window.DecotayTayBWQ = window.DecotayTayBWQ || {};
-        window.DecotayTayBWQ.isXStore = document.body.classList.contains('theme-xstore') || 
-                                        document.querySelector('.etheme-elementor-widget-loaded') !== null ||
-                                        document.querySelector('[data-element_type="widget"][data-widget_type*="theme-"]') !== null;
-        window.DecotayTayBWQ.isElementor = document.querySelector('.elementor') !== null;
-        </script>
-        <?php
     }
     
     public function ajax_add_to_cart() {
