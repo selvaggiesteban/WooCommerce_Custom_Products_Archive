@@ -300,11 +300,9 @@ async function updatePriceStockImage(productId, wrapper, data) {
             wrapper.$stockDisplay.html(matchedVar.in_stock ? '<span class="in-stock">Disponible</span>' : `<span class="out-of-stock">${decotay_tay_bwq.out_of_stock}</span>`).show();
         }
         
-        // IMAGEN
+        // IMAGEN DESTACADA - Actualizar la imagen principal del producto
         if (matchedVar.image) {
-            wrapper.$imageDisplay.html(`<img src="${matchedVar.image}" alt="${matchedVar.sku || ''}" loading="lazy">`).show();
-        } else {
-            wrapper.$imageDisplay.hide();
+            updateFeaturedImage(wrapper, matchedVar.image);
         }
         
         wrapper.$btnCart.prop('disabled', !matchedVar.in_stock);
@@ -312,8 +310,26 @@ async function updatePriceStockImage(productId, wrapper, data) {
         wrapper.$hiddenVariationId.val('');
         wrapper.$priceDisplay.html('').addClass('empty');
         wrapper.$stockDisplay.hide();
-        wrapper.$imageDisplay.hide();
         wrapper.$btnCart.prop('disabled', true);
+    }
+}
+
+/**
+ * Actualiza la imagen destacada del producto en el loop
+ */
+function updateFeaturedImage(wrapper, imageUrl) {
+    const $product = wrapper.$wrapper.closest('.product, li.product, .product-item, .etheme-elementor-product, [data-product_id]');
+    if (!$product.length) return;
+    
+    // Buscar la imagen principal del producto
+    const $mainImage = $product.find('img').first();
+    if ($mainImage.length) {
+        // Guardar imagen original si no existe
+        if (!$mainImage.data('dtbwq-original-src')) {
+            $mainImage.data('dtbwq-original-src', $mainImage.attr('src'));
+        }
+        // Actualizar con la imagen de la variación
+        $mainImage.attr('src', imageUrl);
     }
 }
 
